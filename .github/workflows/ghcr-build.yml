@@ -1,0 +1,119 @@
+name: Build and Push to GHCR
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'dockerfile-node'
+      - 'dockerfile-python'
+      - 'configure-startup.sh'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'dockerfile-node'
+      - 'dockerfile-python'
+      - 'configure-startup.sh'
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      node-changed: ${{ steps.filter.outputs.node }}
+      python-changed: ${{ steps.filter.outputs.python }}
+      startup-script-changed: ${{ steps.filter.outputs.startup }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            node:
+              - 'dockerfile-node'
+            python:
+              - 'dockerfile-python'
+            startup:
+              - 'configure-startup.sh'
+
+  build-node:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.node-changed == 'true' || needs.detect-changes.outputs.startup-script-changed == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set outputs
+      id: sha
+      run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata for Docker
+      id: meta-node
+      uses: docker/metadata-action@v4
+      with:
+        images: ghcr.io/${{ github.repository }}/node
+        tags: |
+          type=raw,value=latest
+          type=raw,value=${{ steps.sha.outputs.sha_short }}
+    
+    - name: Build and push Node Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ./dockerfile-node
+        push: true
+        tags: ${{ steps.meta-node.outputs.tags }}
+        labels: ${{ steps.meta-node.outputs.labels }}
+
+  build-python:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.python-changed == 'true' || needs.detect-changes.outputs.startup-script-changed == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set outputs
+      id: sha
+      run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata for Docker
+      id: meta-python
+      uses: docker/metadata-action@v4
+      with:
+        images: ghcr.io/${{ github.repository }}/python
+        tags: |
+          type=raw,value=latest
+          type=raw,value=${{ steps.sha.outputs.sha_short }}
+    
+    - name: Build and push Python Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ./dockerfile-python
+        push: true
+        tags: ${{ steps.meta-python.outputs.tags }}
+        labels: ${{ steps.meta-python.outputs.labels }}
