@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo "AUTHORIZED_KEYS: $AUTHORIZED_KEYS"
 # Set the authorized keys from the AUTHORIZED_KEYS environment variable (if provided)
+echo "AUTHORIZED_KEYS: $AUTHORIZED_KEYS"
 if [ -n "$AUTHORIZED_KEYS" ]; then
     mkdir -p /root/.ssh
     echo "$AUTHORIZED_KEYS" > /root/.ssh/authorized_keys
