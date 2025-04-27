@@ -90,7 +90,7 @@ services:
     ports:
       - "2222:22"
     environment:
-      - AUTHORIZED_KEYS=ssh-rsa YOUR_PUBLIC_KEY
+      - AUTHORIZED_KEYS="$(cat ~/.ssh/id_rsa.pub)"
       - GIT_USER=Your Name
       - GIT_EMAIL=your.email@example.com
       - SSH_PORT=22
@@ -104,7 +104,7 @@ services:
     ports:
       - "2223:22"
     environment:
-      - AUTHORIZED_KEYS=ssh-rsa YOUR_PUBLIC_KEY
+      - AUTHORIZED_KEYS="$(cat ~/.ssh/id_rsa.pub)"
       - GIT_USER=Your Name
       - GIT_EMAIL=your.email@example.com
       - SSH_PORT=22
