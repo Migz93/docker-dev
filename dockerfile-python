@@ -1,0 +1,65 @@
+# Use an official Ubuntu base image
+FROM ubuntu:24.04
+
+# Set environment variables to avoid interactive prompts during installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install OpenSSH server, install GIT, clean up, create directories, set permissions, and configure SSH
+RUN apt-get update \
+    && apt-get install -y iproute2 iputils-ping openssh-server telnet git \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    && mkdir -p /run/sshd \
+    && chmod 755 /run/sshd 
+
+# Update package lists and install dependencies for Python
+RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    build-essential \
+    wget \
+    curl \
+    libssl-dev \
+    libffi-dev \
+    libncurses5-dev \
+    libsqlite3-dev \
+    libreadline-dev \
+    libbz2-dev \
+    libgdbm-dev \
+    liblzma-dev \
+    zlib1g-dev \
+    tk-dev \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python and required packages
+RUN apt-get update && \
+    apt-get install -y python3 python3-venv python3-dev python3-pip python3-full && \
+    rm -rf /var/lib/apt/lists/*
+
+# Note: Using the system's default Python 3 installation
+
+# Create a virtual environment to work around the externally managed environment restriction
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install pip in the virtual environment
+RUN /opt/venv/bin/pip install --upgrade pip
+
+# Create symbolic links for convenience
+RUN ln -sf /usr/bin/python3 /usr/bin/python
+
+# Verify installation
+RUN python --version && pip --version
+
+# Create symlink from /root/app to /app
+RUN ln -sf /app /root/app
+
+# Set working directory
+WORKDIR /app
+
+# Copy the script to configure the user's password and authorized keys
+COPY configure-startup.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/configure-startup.sh
+
+# Start SSH server
+CMD ["/usr/local/bin/configure-startup.sh"]

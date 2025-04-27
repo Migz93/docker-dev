@@ -1,0 +1,48 @@
+# Use an official Ubuntu base image
+FROM ubuntu:24.04
+
+# Set environment variables to avoid interactive prompts during installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install OpenSSH server, install GIT, clean up, create directories, set permissions, and configure SSH
+RUN apt-get update \
+    && apt-get install -y iproute2 iputils-ping openssh-server telnet git \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    && mkdir -p /run/sshd \
+    && chmod 755 /run/sshd 
+
+# Update package lists and install dependencies for Node.js
+RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    build-essential \
+    wget \
+    curl \
+    gnupg \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js and npm
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get update && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install yarn
+RUN npm install -g yarn
+
+# Verify installation
+RUN node --version && npm --version && yarn --version
+
+# Create symlink from /root/app to /app
+RUN ln -sf /app /root/app
+
+# Set working directory
+WORKDIR /app
+
+# Copy the script to configure the user's password and authorized keys
+COPY configure-startup.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/configure-startup.sh
+
+# Start SSH server
+CMD ["/usr/local/bin/configure-startup.sh"]
