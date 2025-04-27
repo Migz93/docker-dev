@@ -1,0 +1,80 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'dockerfile-node'
+      - 'dockerfile-python'
+      - 'configure-startup.sh'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'dockerfile-node'
+      - 'dockerfile-python'
+      - 'configure-startup.sh'
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      node-changed: ${{ steps.filter.outputs.node }}
+      python-changed: ${{ steps.filter.outputs.python }}
+      startup-script-changed: ${{ steps.filter.outputs.startup }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            node:
+              - 'dockerfile-node'
+            python:
+              - 'dockerfile-python'
+            startup:
+              - 'configure-startup.sh'
+
+  build-node:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.node-changed == 'true' || needs.detect-changes.outputs.startup-script-changed == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set outputs
+      id: sha
+      run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+    - name: docker login
+      env:
+        DOCKER_USER: ${{secrets.DOCKER_USER}}
+        DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+      run: |
+        docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+    - name: Build the Node Docker image
+      run: docker build . --file dockerfile-node --tag ${{secrets.DOCKER_USER}}/${{ github.event.repository.name }}:node --tag ${{secrets.DOCKER_USER}}/${{ github.event.repository.name }}:node-${{ steps.sha.outputs.sha_short }}
+    - name: Docker Push Node SHA
+      run: docker push ${{secrets.DOCKER_USER}}/${{ github.event.repository.name }}:node-${{ steps.sha.outputs.sha_short }}
+    - name: Docker Push Node
+      run: docker push ${{secrets.DOCKER_USER}}/${{ github.event.repository.name }}:node
+
+  build-python:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.python-changed == 'true' || needs.detect-changes.outputs.startup-script-changed == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set outputs
+      id: sha
+      run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+    - name: docker login
+      env:
+        DOCKER_USER: ${{secrets.DOCKER_USER}}
+        DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+      run: |
+        docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+    - name: Build the Python Docker image
+      run: docker build . --file dockerfile-python --tag ${{secrets.DOCKER_USER}}/${{ github.event.repository.name }}:python --tag ${{secrets.DOCKER_USER}}/${{ github.event.repository.name }}:python-${{ steps.sha.outputs.sha_short }}
+    - name: Docker Push Python SHA
+      run: docker push ${{secrets.DOCKER_USER}}/${{ github.event.repository.name }}:python-${{ steps.sha.outputs.sha_short }}
+    - name: Docker Push Python
+      run: docker push ${{secrets.DOCKER_USER}}/${{ github.event.repository.name }}:python
+
