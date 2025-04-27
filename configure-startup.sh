@@ -1,16 +1,22 @@
 #!/bin/bash
 
-# Set the authorized keys from the AUTHORIZED_KEYS environment variable (if provided)
-echo "AUTHORIZED_KEYS: $AUTHORIZED_KEYS"
-if [ -n "$AUTHORIZED_KEYS" ]; then
-    mkdir -p /root/.ssh
-    echo "$AUTHORIZED_KEYS" > /root/.ssh/authorized_keys
-    chown -R root:root /root/.ssh
-    chmod 700 /root/.ssh
-    chmod 600 /root/.ssh/authorized_keys
-    echo "Authorized keys set for user root"
-    sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+# Check if AUTHORIZED_KEYS is provided (mandatory)
+echo "Checking for AUTHORIZED_KEYS environment variable..."
+if [ -z "$AUTHORIZED_KEYS" ]; then
+    echo "ERROR: AUTHORIZED_KEYS environment variable is mandatory but was not provided."
+    echo "Please provide SSH public key(s) via the AUTHORIZED_KEYS environment variable."
+    exit 1
 fi
+
+# Set the authorized keys from the AUTHORIZED_KEYS environment variable
+echo "Setting up SSH with provided authorized keys..."
+mkdir -p /root/.ssh
+echo "$AUTHORIZED_KEYS" > /root/.ssh/authorized_keys
+chown -R root:root /root/.ssh
+chmod 700 /root/.ssh
+chmod 600 /root/.ssh/authorized_keys
+echo "Authorized keys set for user root"
+sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
 
 # Configure Git user if environment variables are set
 if [ -n "$GIT_USER" ]; then

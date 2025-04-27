@@ -14,7 +14,7 @@ This repository contains Dockerfiles for creating consistent development environ
 
 ### Base Development Environment
 
-The base development environment (`dockerfile-base`) includes:
+The base development environment:
 
 - Ubuntu 24.04 base
 - OpenSSH server for remote access
